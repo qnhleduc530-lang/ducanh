@@ -86,14 +86,7 @@ title.Parent = frame
 
 local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1,0,1,-40)
-status.Position = UDim2.new(0,0,0,40)
-status.Text = "✅ Script đang chạy!"
-status.TextScaled = true
-status.TextColor3 = Color3.new(0,1,0)
-status.BackgroundTransparency = 1
-status.Parent = frame
-
-end
+status.Positio
 
 -- ================= NOTIFY =================
 local function notify()
