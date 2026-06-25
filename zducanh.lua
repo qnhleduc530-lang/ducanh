@@ -1,37 +1,45 @@
-print("🔥 DUCANH HUB PRO MAX AUTO")
+print("🔥 DUCANH HUB PRO REAL")
 
 -- ===== ANTI KICK =====
 local mt = getrawmetatable(game)
-setreadonly(mt, false)
+setreadonly(mt,false)
 
 local old = mt.__namecall
 mt.__namecall = newcclosure(function(self,...)
     if getnamecallmethod() == "Kick" then
-        warn("🛡️ Chặn kick!")
+        warn("🛡️ Block Kick")
         return nil
     end
     return old(self,...)
 end)
 
 -- ===== SERVICES =====
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 
--- ===== AUTO SCAN REMOTE =====
-local REMOTES = {}
+-- ===== FIND REMOTE THÔNG MINH =====
+local goodRemotes = {}
 
 for _,v in pairs(game:GetDescendants()) do
     if v:IsA("RemoteEvent") then
-        table.insert(REMOTES, v)
-        print("📡 Remote:", v:GetFullName())
+        local name = v.Name:lower()
+
+        if string.find(name,"pet") 
+        or string.find(name,"egg") 
+        or string.find(name,"sell") 
+        or string.find(name,"farm") 
+        or string.find(name,"event") then
+
+            table.insert(goodRemotes, v)
+            print("🔥 Found:", v:GetFullName())
+        end
     end
 end
 
--- ===== AUTO CALL ALL (NGU VL) =====
-local function spamAll()
-    for _,r in pairs(REMOTES) do
+-- ===== AUTO FARM REAL =====
+local function autoFarm()
+    for _,r in pairs(goodRemotes) do
         pcall(function()
+            print("⚡ Call:", r.Name)
             r:FireServer()
         end)
     end
@@ -40,29 +48,25 @@ end
 -- ===== GUI =====
 local gui = Instance.new("ScreenGui", game.CoreGui)
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,300,0,200)
-frame.Position = UDim2.new(0.5,-150,0.5,-100)
-frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
-
-local btn = Instance.new("TextButton", frame)
-btn.Size = UDim2.new(1,0,1,0)
-btn.Text = "AUTO ALL : TẮT"
+local btn = Instance.new("TextButton", gui)
+btn.Size = UDim2.new(0,200,0,60)
+btn.Position = UDim2.new(0.5,-100,0.8,0)
+btn.Text = "AUTO PRO : OFF"
+btn.BackgroundColor3 = Color3.fromRGB(0,0,0)
 btn.TextColor3 = Color3.new(1,1,1)
-btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
 
 local on = false
 
 btn.MouseButton1Click:Connect(function()
     on = not on
-    btn.Text = "AUTO ALL : "..(on and "BẬT" or "TẮT")
+    btn.Text = "AUTO PRO : "..(on and "ON" or "OFF")
 end)
 
 -- ===== LOOP =====
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(1.5) do
         if on then
-            spamAll()
+            autoFarm()
         end
     end
 end)
