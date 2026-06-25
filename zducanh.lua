@@ -1,105 +1,68 @@
-print("🔥 DUCANH HUB (VIỆT) KHỞI ĐỘNG")
+print("🔥 DUCANH HUB PRO MAX AUTO")
 
 -- ===== ANTI KICK =====
 local mt = getrawmetatable(game)
 setreadonly(mt, false)
 
-local oldNamecall = mt.__namecall
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-
-    if tostring(method) == "Kick" then
-        warn("🛡️ Anti Kick chặn!")
+local old = mt.__namecall
+mt.__namecall = newcclosure(function(self,...)
+    if getnamecallmethod() == "Kick" then
+        warn("🛡️ Chặn kick!")
         return nil
     end
-
-    return oldNamecall(self, ...)
+    return old(self,...)
 end)
 
--- ===== DỊCH VỤ =====
+-- ===== SERVICES =====
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local RS = game:GetService("ReplicatedStorage")
 
--- ===== GUI (HIỆN 100%) =====
-local parentGui = game:FindFirstChild("CoreGui") or LP:WaitForChild("PlayerGui")
+-- ===== AUTO SCAN REMOTE =====
+local REMOTES = {}
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "DucAnhHub"
-gui.Parent = parentGui
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 320)
-frame.Position = UDim2.new(0.5, -160, 0.5, -160)
-frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
-frame.Parent = gui
-
-Instance.new("UIStroke", frame).Color = Color3.fromRGB(255,255,255)
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,35)
-title.Text = "🔥 DUCANH HUB"
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.Parent = frame
-
--- ===== TRẠNG THÁI =====
-local toggle = {
-    pet = false,
-    event = false,
-    egg = false,
-    farm = false,
-    up = false
-}
-
--- ===== TẠO NÚT =====
-local function taoNut(text, y, key)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,-20,0,40)
-    btn.Position = UDim2.new(0,10,0,y)
-    btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Text = text.." : TẮT"
-    btn.Parent = frame
-
-    btn.MouseButton1Click:Connect(function()
-        toggle[key] = not toggle[key]
-        btn.Text = text.." : "..(toggle[key] and "BẬT" or "TẮT")
-    end)
-end
-
--- ===== 5 CHỨC NĂNG =====
-taoNut("Tạo Pet", 50, "pet")
-taoNut("Làm Sự Kiện", 100, "event")
-taoNut("Mở Trứng", 150, "egg")
-taoNut("Farm + Bán", 200, "farm")
-taoNut("Up Pet", 250, "up")
-
--- ===== GỌI REMOTE =====
-local function goi(remoteName)
-    local r = RS:FindFirstChild(remoteName)
-    if r then
-        print("✅ Gọi:", remoteName)
-        pcall(function()
-            r:FireServer()
-        end)
-    else
-        warn("❌ Không có remote:", remoteName)
+for _,v in pairs(game:GetDescendants()) do
+    if v:IsA("RemoteEvent") then
+        table.insert(REMOTES, v)
+        print("📡 Remote:", v:GetFullName())
     end
 end
 
--- ===== LOOP CHÍNH =====
+-- ===== AUTO CALL ALL (NGU VL) =====
+local function spamAll()
+    for _,r in pairs(REMOTES) do
+        pcall(function()
+            r:FireServer()
+        end)
+    end
+end
+
+-- ===== GUI =====
+local gui = Instance.new("ScreenGui", game.CoreGui)
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,300,0,200)
+frame.Position = UDim2.new(0.5,-150,0.5,-100)
+frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+
+local btn = Instance.new("TextButton", frame)
+btn.Size = UDim2.new(1,0,1,0)
+btn.Text = "AUTO ALL : TẮT"
+btn.TextColor3 = Color3.new(1,1,1)
+btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
+
+local on = false
+
+btn.MouseButton1Click:Connect(function()
+    on = not on
+    btn.Text = "AUTO ALL : "..(on and "BẬT" or "TẮT")
+end)
+
+-- ===== LOOP =====
 task.spawn(function()
-    while task.wait(2) do
-        if toggle.pet then goi("CreatePet") end
-        if toggle.event then goi("Event") end
-        if toggle.egg then goi("OpenEgg") end
-
-        if toggle.farm then
-            goi("Harvest")
-            goi("Sell")
+    while task.wait(1) do
+        if on then
+            spamAll()
         end
-
-        if toggle.up then goi("UpgradePet") end
     end
 end)
