@@ -162,26 +162,30 @@ end
 end
 
 -- ================= INIT =================
-local function init()
-log("Init...")
+-- FIX MENU HIỆN
+local gui = Instance.new("ScreenGui")
+gui.Name = "DucAnhMenu"
+gui.ResetOnSpawn = false
 
-local loading = showLoadingUI()
-task.wait(1.5)
-
-if loading then
-    loading:Destroy()
+if syn and syn.protect_gui then
+    syn.protect_gui(gui)
+    gui.Parent = game.CoreGui
+else
+    gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 end
 
-createMenuGUI()
-notify()
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.Parent = gui
 
-task.spawn(mainLoop)
-
-log("✅ LOADED OK")
-
-end
-
-init()
+local text = Instance.new("TextLabel")
+text.Size = UDim2.new(1, 0, 0, 50)
+text.Text = "MENU ĐANG CHẠY"
+text.TextColor3 = Color3.fromRGB(0, 255, 0)
+text.BackgroundTransparency = 1
+text.Parent = frame
 
 -- ================= HOTKEY =================
 UIS.InputBegan:Connect(function(input, gp)
