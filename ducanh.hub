@@ -1,0 +1,565 @@
+--[[
+    Script: ducanh_hub.lua
+    Mô tả: Hub không cần key, tự động cho game Cộng Đồng Việt Nam.
+    Hỗ trợ: Farm Level, Farm Tiền, Farm Sự Kiện, Farm Boss, PVP Combat, Fix Lag.
+    Menu Fluent đẹp, phím tắt End để mở/tắt.
+    Tác giả: DUC ANH
+--]]
+
+-- ========== LOADING ==========
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+print("[DUC ANH HUB] Đang khởi động...")
+
+-- ========== BIẾN TOÀN CỤC ==========
+-- Farm Level
+_G.AutoFarmLevel = false
+_G.NpcDistance = 18.2
+_G.NpcSpeed = 0.05
+_G.AutoLootEnabled = false
+_G.AutoFarmChua = false
+_G.AntiAFKEnabled = false
+
+-- Farm Tiền & Sự Kiện
+_G.AutoFarmBanhMi = false
+_G.AutoFarmBenhVien = false
+_G.AutoFarmCaoSu = false
+_G.AutoFarmChotCongAn = false
+_G.AutoFarmSuKien = false
+_G.AutoFarmMatOng = false
+
+-- Farm Boss
+_G.TeleportToBoss = false
+_G.AutoFarmBossCircle = false
+_G.BossCircleDistance = 18.2
+_G.BossCircleSpeed = 0.05
+_G.AutoLootBossEnabled = false
+_G.AutoAimBossNoCam = false
+_G.ShowBossTracker = false
+_G.FreecamEnabled = false
+_G.LockCameraEnabled = false
+
+-- PVP Combat
+_G.PvpAutoAttack = false
+_G.AutoBandageEnabled = false
+_G.AutoBuyBandage = false
+_G.AutoBuyBandageAmount = 1
+_G.PvpAimNoCamActive = false
+_G.PvpHitboxActive = false
+_G.PvpSpinActive = false
+_G.PvpSpeedActive = false
+_G.PvpJumpActive = false
+
+-- ========== LẤY SERVICE ==========
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local UIS = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local camera = workspace.CurrentCamera
+
+local player = LP
+local function log(msg)
+    print("[DUC ANH HUB] " .. msg)
+end
+
+-- ========== TẢI FLUENT ==========
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- ========== TẠO CỬA SỔ CHÍNH ==========
+local Window = Fluent:CreateWindow({
+    Title = "🔥 DUC ANH HUB 🔥",
+    SubTitle = "Cộng Đồng Việt Nam - Auto Farm",
+    TabWidth = 157,
+    Size = UDim2.fromOffset(450, 400),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.End
+})
+
+-- ========== NÚT MỞ MENU TRÊN MÀN HÌNH ==========
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ducanh_hub_icon"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local ImageButton = Instance.new("ImageButton")
+ImageButton.Parent = ScreenGui
+ImageButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ImageButton.BorderSizePixel = 0
+ImageButton.Position = UDim2.new(0.106, 0, 0.162, 0)
+ImageButton.Size = UDim2.new(0, 40, 0, 40)
+ImageButton.Draggable = true
+ImageButton.Image = "http://www.roblox.com/asset/?id=126677255840605"
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 10)
+UICorner.Parent = ImageButton
+
+ImageButton.MouseButton1Down:Connect(function()
+    Window:Minimize()
+end)
+
+-- ========== TẠO TAB ==========
+local Tabs = {
+    Main = Window:AddTab({ Title = "⚡ Main" }),
+    FarmLevel = Window:AddTab({ Title = "📈 Farm Level" }),
+    FarmMoney = Window:AddTab({ Title = "💰 Farm Tiền" }),
+    FarmEvent = Window:AddTab({ Title = "🎯 Farm Sự Kiện" }),
+    FarmBoss = Window:AddTab({ Title = "👹 Farm Boss" }),
+    PVP = Window:AddTab({ Title = "⚔️ PVP Combat" }),
+    Settings = Window:AddTab({ Title = "⚙️ Settings" })
+}
+
+-- ========== HÀM THÔNG BÁO ==========
+local function notify(title, text, duration)
+    duration = duration or 3
+    Fluent:Notify({
+        Title = title,
+        Content = text,
+        Duration = duration
+    })
+end
+
+-- ========== HÀM TƯƠNG TÁC ==========
+local function isAliveModel(model)
+    if model and model:FindFirstChild("Humanoid") and model.Humanoid.Health > 0 then
+        return true
+    end
+    return false
+end
+
+local function getNearestMonster()
+    local char = LP.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local hrpPos = char.HumanoidRootPart.Position
+    local closestMonster = nil
+    local maxDistance = math.huge
+    local targetFolder = workspace:FindFirstChild("Bosses") or workspace:FindFirstChild("Monsters") or workspace
+    for _, obj in ipairs(targetFolder:GetChildren()) do
+        if obj:IsA("Model") and isAliveModel(obj) and obj ~= char then
+            if not Players:GetPlayerFromCharacter(obj) then
+                local mHrp = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
+                if mHrp then
+                    local distance = (hrpPos - mHrp.Position).Magnitude
+                    if distance < maxDistance then
+                        maxDistance = distance
+                        closestMonster = obj
+                    end
+                end
+            end
+        end
+    end
+    return closestMonster
+end
+
+-- ========== LOGIC FARM LEVEL ==========
+local lockedTarget = nil
+local lockedPosition = nil
+local lastDash = 0
+_G.Settings = {
+    TargetName = "CityNPC",
+    DashDist = 18.2,
+    Speed = 0.05
+}
+
+task.spawn(function()
+    while task.wait() do
+        if _G.AutoFarmLevel then
+            pcall(function()
+                local character = LP.Character
+                if not character then return end
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChild("Humanoid")
+                if not hrp or not humanoid then return end
+
+                if not lockedTarget or not lockedTarget.Parent or not lockedTarget:FindFirstChild("Humanoid") or lockedTarget.Humanoid.Health <= 0 then
+                    lockedTarget = nil
+                    lockedPosition = nil
+                    for _, obj in pairs(Workspace:GetDescendants()) do
+                        if obj.Name == _G.Settings.TargetName and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
+                            lockedTarget = obj
+                            lockedPosition = obj.HumanoidRootPart.Position
+                            break
+                        end
+                    end
+                end
+
+                if not lockedTarget then return end
+
+                local targetHrp = lockedTarget:FindFirstChild("HumanoidRootPart")
+                local targetHum = lockedTarget:FindFirstChild("Humanoid")
+                if not targetHrp or not targetHum then
+                    lockedTarget = nil
+                    lockedPosition = nil
+                    return
+                end
+
+                targetHrp.CFrame = CFrame.new(lockedPosition)
+                targetHum.WalkSpeed = 0
+                targetHum.JumpPower = 0
+                targetHum.PlatformStand = true
+
+                if tick() - lastDash >= _G.Settings.Speed then
+                    lastDash = tick()
+                    local offsets = {
+                        Vector3.new(_G.Settings.DashDist, 0, 0),
+                        Vector3.new(-_G.Settings.DashDist, 0, 0),
+                        Vector3.new(0, 0, _G.Settings.DashDist),
+                        Vector3.new(0, 0, -_G.Settings.DashDist)
+                    }
+                    local randomOffset = offsets[math.random(1, #offsets)]
+                    hrp.CFrame = CFrame.lookAt(lockedPosition + randomOffset, lockedPosition)
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+
+                    local tool = character:FindFirstChildOfClass("Tool")
+                    if tool then
+                        tool:Activate()
+                        pcall(function() tool:Activate() end)
+                    else
+                        VirtualUser:CaptureController()
+                        VirtualUser:Button1Down(Vector2.new(500, 500))
+                        task.wait(0.03)
+                        VirtualUser:Button1Up(Vector2.new(500, 500))
+                    end
+                end
+            end)
+        else
+            lockedTarget = nil
+            lockedPosition = nil
+        end
+    end
+end)
+
+-- ========== AUTO LOOT ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoLootEnabled or _G.AutoLootBossEnabled then
+            pcall(function()
+                local char = LP.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for _, v in ipairs(workspace:GetDescendants()) do
+                        if v:IsA("ProximityPrompt") then
+                            local pos = v.Parent:IsA("BasePart") and v.Parent.Position or (v.Parent:IsA("Model") and v.Parent:GetPivot().Position)
+                            if pos and (hrp.Position - pos).Magnitude <= 20 then
+                                fireproximityprompt(v)
+                            end
+                        end
+                        if v:IsA("TouchInterest") and v.Parent:IsA("BasePart") then
+                            if (hrp.Position - v.Parent.Position).Magnitude <= 20 then
+                                firetouchinterest(hrp, v.Parent, 0)
+                                firetouchinterest(hrp, v.Parent, 1)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== TỌA ĐỘ FARM ==========
+local ToaDoChua1 = Vector3.new(1561, 133, -244)
+local ToaDoChua2 = Vector3.new(1547, 133, -245)
+local TDBanhMi = {
+    Vector3.new(573, 21, -357),
+    Vector3.new(563, 20, -386),
+    Vector3.new(553, 20, -413),
+    Vector3.new(531, 21, -449)
+}
+local TDBenhVien = {
+    Vector3.new(790, 22, -403),
+    Vector3.new(790, 22, -413)
+}
+local TDCaoSu = {
+    Vector3.new(1681, 19, -456),
+    Vector3.new(1723, 19, -388)
+}
+local TDChotCongAn = Vector3.new(734, 20, -812)
+local TDSuKien = Vector3.new(0, 0, 0)
+local TDMatOng = {
+    Vector3.new(567, 19, -533),
+    Vector3.new(626, 19, -511),
+    Vector3.new(629, 19, -419)
+}
+local TDBoss = Vector3.new(-2823, 274, -1896)
+local FIXED_BOSS_POS = Vector3.new(-2790, 239, -1762)
+
+-- ========== HÀM KIỂM TRA VỊ TRÍ ==========
+local function isAreaOccupied(targetPos)
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            if (p.Character.HumanoidRootPart.Position - targetPos).Magnitude <= 7 then
+                return true
+            end
+        end
+    end
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Seat") or v:IsA("VehicleSeat") then
+            if (v.Position - targetPos).Magnitude <= 7 and v.Occupant and v.Occupant.Parent ~= player.Character then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function interactWithSeatPrompt(targetPos)
+    for _, prompt in ipairs(workspace:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") and (prompt.Parent:IsA("BasePart") or prompt.Parent:IsA("Model")) then
+            if (prompt.Parent.Position - targetPos).Magnitude <= 6 then
+                fireproximityprompt(prompt)
+                break
+            end
+        end
+    end
+end
+
+-- ========== ANTI AFK ==========
+local function isAnyFarmActive()
+    return _G.AntiAFKEnabled or _G.AutoFarmChua or _G.AutoFarmBanhMi or _G.AutoFarmBenhVien or _G.AutoFarmCaoSu or _G.AutoFarmChotCongAn or _G.AutoFarmSuKien or _G.AutoFarmMatOng or _G.TeleportToBoss or _G.AutoFarmBossCircle
+end
+
+LP.Idled:Connect(function()
+    if isAnyFarmActive() then
+        VirtualUser:Button2Down(Vector2.new(), camera.CFrame)
+        task.wait(0.5)
+        VirtualUser:Button2Up(Vector2.new(), camera.CFrame)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(250)
+        if isAnyFarmActive() then
+            pcall(function()
+                if not _G.FreecamEnabled and not _G.LockCameraEnabled and not _G.AutoAimBossNoCam then
+                    camera.CFrame *= CFrame.Angles(0, math.rad(5), 0)
+                end
+                VirtualUser:Button2Down(Vector2.new(), camera.CFrame)
+                task.wait(0.5)
+                VirtualUser:Button2Up(Vector2.new(), camera.CFrame)
+            end)
+        end
+    end
+end)
+
+-- ========== FARM CHÙA ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoFarmChua then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if hrp and humanoid and not humanoid.SeatPart then
+                    local finalTarget = ToaDoChua1
+                    if isAreaOccupied(ToaDoChua1) then
+                        finalTarget = ToaDoChua2
+                    end
+                    hrp.CFrame = CFrame.new(finalTarget + Vector3.new(0, 2, 0))
+                    task.wait(0.1)
+                    interactWithSeatPrompt(finalTarget)
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== FARM BÁNH MÌ ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoFarmBanhMi then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if hrp and humanoid and not humanoid.SeatPart then
+                    local finalTarget = nil
+                    for i = 1, #TDBanhMi do
+                        if not isAreaOccupied(TDBanhMi[i]) then
+                            finalTarget = TDBanhMi[i]
+                            break
+                        end
+                    end
+                    if not finalTarget then
+                        finalTarget = TDBanhMi[1]
+                    end
+                    hrp.CFrame = CFrame.new(finalTarget + Vector3.new(0, 2, 0))
+                    task.wait(0.1)
+                    interactWithSeatPrompt(finalTarget)
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== FARM BỆNH VIỆN ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoFarmBenhVien then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if hrp and humanoid and not humanoid.SeatPart then
+                    local finalTarget = nil
+                    for i = 1, #TDBenhVien do
+                        if not isAreaOccupied(TDBenhVien[i]) then
+                            finalTarget = TDBenhVien[i]
+                            break
+                        end
+                    end
+                    if not finalTarget then
+                        finalTarget = TDBenhVien[1]
+                    end
+                    hrp.CFrame = CFrame.new(finalTarget + Vector3.new(0, 2, 0))
+                    task.wait(0.1)
+                    interactWithSeatPrompt(finalTarget)
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== FARM CAO SU ==========
+local currentCaoSuTarget = nil
+task.spawn(function()
+    while true do
+        task.wait(0.8)
+        if _G.AutoFarmCaoSu then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    if not currentCaoSuTarget or (isAreaOccupied(currentCaoSuTarget)) then
+                        local chosen = nil
+                        for i = 1, #TDCaoSu do
+                            if not isAreaOccupied(TDCaoSu[i]) then
+                                chosen = TDCaoSu[i]
+                                break
+                            end
+                        end
+                        currentCaoSuTarget = chosen or TDCaoSu[1]
+                    end
+                    hrp.CFrame = CFrame.new(currentCaoSuTarget + Vector3.new(0, 2, 0))
+                end
+            end)
+        else
+            currentCaoSuTarget = nil
+        end
+    end
+end)
+
+-- ========== FARM CHỐT CÔNG AN ==========
+task.spawn(function()
+    while true do
+        task.wait(0.8)
+        if _G.AutoFarmChotCongAn then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    if not isAreaOccupied(TDChotCongAn) then
+                        hrp.CFrame = CFrame.new(TDChotCongAn + Vector3.new(0, 2, 0))
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== FARM SỰ KIỆN ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoFarmSuKien then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if hrp and humanoid then
+                    if (hrp.Position - TDSuKien).Magnitude > 5 then
+                        hrp.CFrame = CFrame.new(TDSuKien + Vector3.new(0, 2, 0))
+                    end
+                    task.wait(0.1)
+                    interactWithSeatPrompt(TDSuKien)
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== FARM MẬT ONG ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoFarmMatOng then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                if hrp and humanoid and not humanoid.SeatPart then
+                    local finalTarget = nil
+                    for i = 1, #TDMatOng do
+                        if not isAreaOccupied(TDMatOng[i]) then
+                            finalTarget = TDMatOng[i]
+                            break
+                        end
+                    end
+                    if not finalTarget then
+                        finalTarget = TDMatOng[1]
+                    end
+                    hrp.CFrame = CFrame.new(finalTarget + Vector3.new(0, 2, 0))
+                    task.wait(0.1)
+                    interactWithSeatPrompt(finalTarget)
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== TELEPORT BOSS ==========
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.TeleportToBoss then
+            pcall(function()
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp and (hrp.Position - TDBoss).Magnitude > 3 then
+                    hrp.CFrame = CFrame.new(TDBoss)
+                end
+            end)
+        end
+    end
+end)
+
+-- ========== FARM BOSS CIRCLE ==========
+_G.BossSettings = {
+    TargetName = "NPC2",
+    DashDist = 18.2,
+    Speed = 0.05
+}
+local lastDashBoss = 0
+
+task.spawn(function()
+    while true do
+        task.wait()
+        if _G.AutoFarmBossCircle and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            pcall(function()
+                local hrp = player.Character.HumanoidRootPart
+            
