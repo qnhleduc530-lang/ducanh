@@ -1,0 +1,87 @@
+# -*- coding: utf-8 -*-
+"""
+Script quản lý xe - dùng để nhập dữ liệu xe và lưu vào file.
+Chạy độc lập, không phụ thuộc vào thư viện ngoài.
+"""
+
+import json
+import os
+
+FILE_XE = "xe_data.json"
+
+def khoi_tao_file():
+    """Tạo file rỗng nếu chưa tồn tại."""
+    if not os.path.exists(FILE_XE):
+        with open(FILE_XE, "w", encoding="utf-8") as f:
+            json.dump([], f, indent=2, ensure_ascii=False)
+
+def doc_danh_sach_xe():
+    """Đọc danh sách xe từ file JSON."""
+    khoi_tao_file()
+    with open(FILE_XE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def ghi_danh_sach_xe(ds):
+    """Ghi danh sách xe vào file JSON."""
+    with open(FILE_XE, "w", encoding="utf-8") as f:
+        json.dump(ds, f, indent=2, ensure_ascii=False)
+
+def them_xe(bien_so, hang, mau, nam_sx):
+    """Thêm một xe mới."""
+    ds = doc_danh_sach_xe()
+    xe = {
+        "bien_so": bien_so,
+        "hang": hang,
+        "mau": mau,
+        "nam_san_xuat": nam_sx
+    }
+    ds.append(xe)
+    ghi_danh_sach_xe(ds)
+    return xe
+
+def tim_xe_theo_bien_so(bien_so):
+    """Tìm xe theo biển số, trả về xe hoặc None."""
+    ds = doc_danh_sach_xe()
+    for x in ds:
+        if x["bien_so"] == bien_so:
+            return x
+    return None
+
+def xoa_xe_theo_bien_so(bien_so):
+    """Xóa xe có biển số cho trước. Trả về True nếu xóa thành công."""
+    ds = doc_danh_sach_xe()
+    for i, x in enumerate(ds):
+        if x["bien_so"] == bien_so:
+            del ds[i]
+            ghi_danh_sach_xe(ds)
+            return True
+    return False
+
+def hien_thi_tat_ca():
+    """In danh sách xe ra màn hình dạng bảng đơn giản."""
+    ds = doc_danh_sach_xe()
+    if not ds:
+        print("Chưa có xe nào.")
+        return
+    print("{:<12} {:<15} {:<12} {:<6}".format("Biển số", "Hãng", "Màu", "Năm SX"))
+    print("-" * 50)
+    for x in ds:
+        print("{:<12} {:<15} {:<12} {:<6}".format(
+            x["bien_so"], x["hang"], x["mau"], str(x["nam_san_xuat"])))
+
+# --- Phần chính để chạy thử ---
+if __name__ == "__main__":
+    khoi_tao_file()
+    # Ví dụ thêm một số xe mẫu
+    them_xe("29A-12345", "Toyota", "Đen", 2020)
+    them_xe("51B-67890", "Honda", "Trắng", 2022)
+    print("Danh sách xe sau khi thêm mẫu:")
+    hien_thi_tat_ca()
+    # Tìm thử
+    x = tim_xe_theo_bien_so("29A-12345")
+    if x:
+        print(f"\nTìm thấy: {x}")
+    # Xoá thử
+    xoa_xe_theo_bien_so("51B-67890")
+    print("\nSau khi xoá 51B-67890:")
+    hien_thi_tat_ca()
